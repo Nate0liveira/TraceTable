@@ -1,1 +1,0 @@
-TraceTable v2: Brightness and Contrast removed. Grayscale and Invert fixed using explicit pixel processing for iOS Safari. All other features retained.
