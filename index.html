@@ -133,26 +133,11 @@ body.light #stage{background:#fff}
       </div>
 
       <div class="section">
-        <div class="controls-row">
-          <div class="control">
-            <div class="label"><span>Brightness</span><span id="brightnessValue">100%</span></div>
-            <input id="brightness" type="range" min="0" max="200" value="100">
-          </div>
-          <div class="control">
-            <div class="label"><span>Contrast</span><span id="contrastValue">100%</span></div>
-            <input id="contrast" type="range" min="0" max="200" value="100">
-          </div>
-          <div class="control">
-            <div class="label"><span>Opacity</span><span id="opacityValue">100%</span></div>
-            <input id="opacity" type="range" min="0" max="100" value="100">
-          </div>
-          <div class="control">
-            <div class="label"><span>Background light</span><span id="bgValue">100%</span></div>
-            <input id="bgLight" type="range" min="0" max="100" value="100">
-          </div>
+        <div class="control">
+          <div class="label"><span>Opacity</span><span id="opacityValue">100%</span></div>
+          <input id="opacity" type="range" min="0" max="100" value="100">
         </div>
       </div>
-
       <div class="toolbar">
         <button class="btn small" id="grayBtn">Grayscale: Off</button>
         <button class="btn small" id="invertBtn">Invert: Off</button>
@@ -183,7 +168,7 @@ body.light #stage{background:#fff}
   const state = {
     img:null, src:null,
     x:0, y:0, scale:1, rotation:0,
-    brightness:100, contrast:100, opacity:100, bgLight:100,
+    opacity:100,
     grayscale:false, invert:false, fitted:false
   };
 
@@ -219,32 +204,48 @@ body.light #stage{background:#fff}
 
   function reset(){
     if(!state.img) return;
-    state.brightness=100; state.contrast=100; state.opacity=100; state.bgLight=100;
+    state.opacity=100;
     state.grayscale=false; state.invert=false; state.rotation=0;
     fitImage();
     syncControls(); render(); scheduleSave();
   }
 
+  const filterCanvas=document.createElement("canvas");
+  const filterCtx=filterCanvas.getContext("2d");
+
+  function makeFilteredSource(){
+    if(!state.img) return null;
+    const w=state.img.naturalWidth,h=state.img.naturalHeight;
+    filterCanvas.width=w; filterCanvas.height=h;
+    filterCtx.setTransform(1,0,0,1,0,0);
+    filterCtx.clearRect(0,0,w,h);
+    filterCtx.drawImage(state.img,0,0);
+    if(!state.grayscale&&!state.invert) return filterCanvas;
+    const data=filterCtx.getImageData(0,0,w,h),p=data.data;
+    for(let i=0;i<p.length;i+=4){
+      if(state.grayscale){const y=Math.round(.299*p[i]+.587*p[i+1]+.114*p[i+2]);p[i]=p[i+1]=p[i+2]=y;}
+      if(state.invert){p[i]=255-p[i];p[i+1]=255-p[i+1];p[i+2]=255-p[i+2];}
+    }
+    filterCtx.putImageData(data,0,0);
+    return filterCanvas;
+  }
+
   function drawImage(){
-    if(!state.img) return;
-    const r=stage.getBoundingClientRect();
+    if(!state.img)return;
+    const source=makeFilteredSource();
     ctx.save();
     ctx.translate(state.x*dpr,state.y*dpr);
     ctx.rotate(state.rotation*Math.PI/180);
     ctx.scale(state.scale*dpr,state.scale*dpr);
     ctx.globalAlpha=state.opacity/100;
-    let filter=`brightness(${state.brightness}%) contrast(${state.contrast}%)`;
-    if(state.grayscale) filter+=" grayscale(1)";
-    if(state.invert) filter+=" invert(1)";
-    ctx.filter=filter;
-    ctx.drawImage(state.img,-state.img.naturalWidth/2,-state.img.naturalHeight/2);
+    ctx.drawImage(source,-source.width/2,-source.height/2);
     ctx.restore();
-    ctx.filter="none"; ctx.globalAlpha=1;
+    ctx.globalAlpha=1;
   }
 
   function render(){
     const r=stage.getBoundingClientRect();
-    const bg=Math.round(255*(state.bgLight/100));
+    const bg=255;
     ctx.setTransform(1,0,0,1,0,0);
     ctx.fillStyle=`rgb(${bg},${bg},${bg})`;
     ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -253,10 +254,7 @@ body.light #stage{background:#fff}
   }
 
   function syncControls(){
-    brightness.value=state.brightness; brightnessValue.textContent=state.brightness+"%";
-    contrast.value=state.contrast; contrastValue.textContent=state.contrast+"%";
     opacity.value=state.opacity; opacityValue.textContent=state.opacity+"%";
-    bgLight.value=state.bgLight; bgValue.textContent=state.bgLight+"%";
     grayBtn.textContent="Grayscale: "+(state.grayscale?"On":"Off");
     invertBtn.textContent="Invert: "+(state.invert?"On":"Off");
   }
@@ -268,8 +266,8 @@ body.light #stage{background:#fff}
       const img=new Image();
       img.onload=()=>{
         state.img=img; state.src=reader.result; state.rotation=0;
-        state.brightness=100; state.contrast=100; state.opacity=100;
-        state.bgLight=100; state.grayscale=false; state.invert=false;
+        state.opacity=100;
+        state.grayscale=false; state.invert=false;
         fitImage(); syncControls(); render(); scheduleSave();
       };
       img.src=reader.result;
@@ -340,10 +338,7 @@ body.light #stage{background:#fff}
     state.img=null; state.src=null; localStorage.removeItem("traceTableSetup");
     render();
   };
-  brightness.oninput=e=>{state.brightness=+e.target.value;brightnessValue.textContent=state.brightness+"%";render();scheduleSave();};
-  contrast.oninput=e=>{state.contrast=+e.target.value;contrastValue.textContent=state.contrast+"%";render();scheduleSave();};
   opacity.oninput=e=>{state.opacity=+e.target.value;opacityValue.textContent=state.opacity+"%";render();scheduleSave();};
-  bgLight.oninput=e=>{state.bgLight=+e.target.value;bgValue.textContent=state.bgLight+"%";render();scheduleSave();};
 
   grayBtn.onclick=()=>{state.grayscale=!state.grayscale;syncControls();render();scheduleSave();};
   invertBtn.onclick=()=>{state.invert=!state.invert;syncControls();render();scheduleSave();};
@@ -377,8 +372,7 @@ body.light #stage{background:#fff}
     if(!state.src) return null;
     return {
       src:state.src,x:state.x,y:state.y,scale:state.scale,rotation:state.rotation,
-      brightness:state.brightness,contrast:state.contrast,opacity:state.opacity,bgLight:state.bgLight,
-      grayscale:state.grayscale,invert:state.invert
+      opacity:state.opacity,grayscale:state.grayscale,invert:state.invert
     };
   }
   function scheduleSave(){
@@ -417,7 +411,6 @@ body.light #stage{background:#fff}
 
   syncControls();
   resizeCanvas();
-  restoreSetup(false);
 
   if("serviceWorker" in navigator){
     window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
