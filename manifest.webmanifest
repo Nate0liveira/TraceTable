@@ -1,0 +1,14 @@
+{
+  "name": "TraceTable",
+  "short_name": "TraceTable",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "orientation": "any",
+  "description": "A simple light-table tracing tool for iPhone and iPad.",
+  "icons": [
+    {"src":"icon-192.png","sizes":"192x192","type":"image/png"},
+    {"src":"icon-512.png","sizes":"512x512","type":"image/png"}
+  ]
+}
